@@ -3,13 +3,36 @@
 <h1>Signup Form</h1>
 <form action="/signup.html" method="POST" class="box">
     <div class="input__wrapper">
-        <input type="text" name="username" placeholder="Username" class="input__field">
-    </div>            
-    <div class="input__wrapper">
-        <input type="password" name="password" placeholder="Password" class="input__field">
+        <input 
+            type="text"
+            name="username"
+            placeholder="Username [3-16 characters, alphanumeric/underscore]"
+            class="input__field"
+            pattern="\w{3,16}"
+            title="3-16 characters, alphanumeric/underscore"
+            required
+        >
     </div>
     <div class="input__wrapper">
-        <input type="dateOfBirth" name="dob" placeholder="Date of Birth" class="input__field">
+        <input
+            type="password"
+            name="password"
+            placeholder="Password [8-16 characters, lowercase, uppercase, number, and special character]"
+            class="input__field"
+            pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*_=+-])[A-Za-z0-9!@#$%^&*_=+-]{8,16}$"
+            title="8-16 characters with uppercase, lowercase, number, and special character"
+            required
+        >
+    </div>
+    <div class="input__wrapper">
+        <input
+            type="date"
+            name="dob"
+            placeholder="Date of Birth [YYYY-MM-DD]"
+            class="input__field"
+            title="Format YYYY-MM-DD"
+            required
+        >
     </div>
     <div class="input__wrapper">
         <button type="submit" class="btn">Submit</button>
