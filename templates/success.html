@@ -1,7 +1,7 @@
 {% extends 'layout.html' %}
 {% block content %}
 <h1>Welcome {{ value }}!</h1>
-<form action="/success.html" method="post" class="box">
+<form action="{{ url_for('add_feedback') }}" method="post" class="box">
   <div class="input__wrapper">
     <input style="height:100px;vertical-align:top" type="text" name="feedback" id="feedback" placeholder="Enter your feedback here" class="input__field" required/>
   </div>
