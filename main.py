@@ -146,6 +146,9 @@ def addFeedback():
             return render_template("/success.html", error="Feedback too long"), 400
         if len(feedback) < 8:
             return render_template("/success.html", error="Feedback too long"), 400
+        
+        # Insert feedback
+        dbHandler.insertFeedback(feedback)
 
         # Refresh feedback
         dbHandler.listFeedback()
