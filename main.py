@@ -31,7 +31,7 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    user_data = dbHandler.getUserById(user_id)
+    user_data = dbHandler.retrieveUsers(user_id)
     if user_data:
         return User(user_data["id"], user_data["username"])
     return None
@@ -99,7 +99,7 @@ def home():
                     file.write(str(number))
             
             dbHandler.listFeedback()
-            return render_template("/success.html", value="{current_user.username}"), 200
+            return render_template("/success.html", value=current_user.username), 200
         else:
             return render_template("/index.html", error="Invalid login"), 401
     else:
@@ -189,4 +189,4 @@ def logout():
 if __name__ == "__main__":
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, use_reloader=True, host="0.0.0.0", port=5000)
