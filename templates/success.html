@@ -1,7 +1,14 @@
 {% extends 'layout.html' %}
 {% block content %}
 <h1>Welcome {{ value }}!</h1>
+
+<!-- Error message -->
+{% if error %}
+<div>{{ error }}</div>
+{% endif %}
+
 <form action="{{ url_for('add_feedback') }}" method="post" class="box">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="input__wrapper">
     <input style="height:100px;vertical-align:top" type="text" name="feedback" id="feedback" placeholder="Enter your feedback here" class="input__field" required/>
   </div>
@@ -19,6 +26,10 @@
   <br/>
   <h1>Others feedback</h1>
       <div>
-        {% include "partials/success_feedback.html" %}
+        {% if feedback %}
+          {% for f in feedback %}
+            <p>{{ f[1] }}</p>
+          {% endfor %}
+        {% endif %}
       </div>
 {% endblock %}

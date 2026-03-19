@@ -3,7 +3,7 @@ import user_management as dbHandler
 import sqlite3
 from flask_login import LoginManager, UserMixin, login_user, login_required, current_user, logout_user
 from flask_csp.csp import csp_default, csp_header
-from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import re
@@ -30,12 +30,12 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 csp_default().update({
     "base-uri": "self",
     "default-src": "'self'",
-    "style-src": "'self' https://fonts.googleapis.com",
-    "style-src-attr": "'self' 'unsafe-inline'",
-    "script-src": "'self' https://getfreebootstrap.ru",
+    "style-src": "'self'",
+    "style-src-attr": "'self'",
+    "script-src": "'self'",
     "img-src": "*",
     "media-src": "'self'",
-    "font-src": "'self' https://fonts.gstatic.com",
+    "font-src": "'self'",
     "object-src": "'self'",
     "child-src": "'self'",
     "connect-src": "'self'",
@@ -80,7 +80,7 @@ logger = logging.getLogger("security")  # Dedicated logger
 
 @login_manager.user_loader
 def load_user(user_id):
-    user_data = dbHandler.retrieveUsers(user_id)
+    user_data = dbHandler.retrieveUserbyId(user_id)
     if user_data:
         return User(user_data["id"], user_data["username"])
     return None
@@ -110,7 +110,6 @@ PASSWORD_PATTERN = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_=+-])[A-Za-z\
 @app.route("/", methods=["POST", "GET"])
 @csp_header()
 def home():
-    token = generate_csrf()
     # Pass message to front end
     if request.method == "GET":
         msg = request.args.get("msg", "")
@@ -142,8 +141,6 @@ def home():
                 number += 1
                 with open("logs/visitor_log.txt", "w") as file:
                     file.write(str(number))
-            
-            dbHandler.listFeedback()
             return redirect(url_for("success_page"))
         else:
             return render_template("/index.html", msg="Invalid login"), 401
@@ -199,38 +196,29 @@ def signup():
 @login_required
 @csp_header()
 def success_page():
-    token = generate_csrf()
     feedback_list = dbHandler.listFeedback()
-    return render_template(
-        "success.html",
-        state=True,
-        value=current_user.username,
-        feedback_list=feedback_list,
-    )
+    print(feedback_list)
+    app.logger.debug("success_page: %d feedback rows", len(feedback_list) if feedback_list else 0)
+    return render_template("success.html", value=current_user.username, feedback=feedback_list)
 
 @app.route("/add_feedback", methods=["POST"])
 @login_required
 @csp_header()
 def add_feedback():
-    token = generate_csrf()
     if request.method == "POST":
         feedback = request.form.get("feedback", "").strip()
         # Validate feedback
         if not feedback:
             logger.warning(f"Empty feedback submitted by {current_user.username}")
-            return render_template("/success.html", error="Feedback cannot be empty"), 400
+            return render_template(url_for("success_page"), value=current_user.username, error="Feedback cannot be empty"), 400
         if len(feedback) > 256:
             logger.warning(f"Feedback too long by {current_user.username}")
-            return render_template("/success.html", error="Feedback too long"), 400
+            return render_template(url_for("success_page"), value=current_user.username, error="Feedback too long"), 400
         if len(feedback) < 8:
             logger.warning(f"Feedback too short by {current_user.username}")
-            return render_template("/success.html", error="Feedback too long"), 400
-        
+            return render_template(url_for("success_page"), value=current_user.username, error="Feedback too short"), 400
         # Insert feedback
-        dbHandler.insertFeedback(feedback)
-
-        # Refresh feedback
-        dbHandler.listFeedback()
+        dbHandler.insertFeedback(safe(feedback))
     return redirect(url_for("success_page"))
 
 
@@ -239,7 +227,7 @@ def add_feedback():
 @login_required
 def logout():
     logout_user()
-    return redirect("/")  # or login page
+    return redirect("/")
 
 
 if __name__ == "__main__":

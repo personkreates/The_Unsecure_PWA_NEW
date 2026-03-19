@@ -1,17 +1,11 @@
 import sqlite3 as sql
-import time
-import random
-import bcrypt
 
 
 def insertUser(username, hashed_password_bytes, DoB):
-
     con = sql.connect("database_files/database.db")
     cur = con.cursor()
     cur.execute(
-        "INSERT INTO users (username,password,dateOfBirth) VALUES (?,?,?)",
-        (username, hashed_password_bytes, DoB),
-    )
+        "INSERT INTO users (username,password,dateOfBirth) VALUES (?,?,?)", (username, hashed_password_bytes, DoB))
     con.commit()
     con.close()
 
@@ -30,6 +24,25 @@ def retrieveUsers(username):
         }
     return None
 
+
+def retrieveUserbyId(user_id):
+    con = sql.connect("database_files/database.db")
+    con.row_factory = sql.Row
+    cur = con.cursor()
+    # treat numeric identifier as id, otherwise username
+    try:
+        cur.execute("SELECT id, username, password FROM users WHERE id = ?", (int(user_id),))
+    except ValueError:
+        cur.execute("SELECT id, username, password FROM users WHERE username = ?", (user_id,))
+    row = cur.fetchone()
+    cur.close()
+    con.close()
+    if not row:
+        return None
+    row = dict(row)
+    return row
+
+
 def insertFeedback(feedback):
     con = sql.connect("database_files/database.db")
     cur = con.cursor()
@@ -43,9 +56,4 @@ def listFeedback():
     cur = con.cursor()
     data = cur.execute("SELECT * FROM feedback").fetchall()
     con.close()
-    f = open("templates/partials/success_feedback.html", "w")
-    for row in data:
-        f.write("<p>\n")
-        f.write(f"{row[1]}\n")
-        f.write("</p>\n")
-    f.close()
+    return data

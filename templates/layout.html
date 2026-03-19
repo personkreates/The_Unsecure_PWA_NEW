@@ -2,7 +2,6 @@
 <html lang="en">
    <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="csrf-token" content="{{ csrf_token() }}" />
         <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <meta
       http-equiv="Content-Security-Policy"
@@ -21,11 +20,11 @@
             <img src="static\images\logo.svg" alt="The unsecure website logo." />
             <h1>The Unsecure PWA</h1>
             <ul class="topnav">
-                <li><a href="?url=/">Home</a></li>
-                <li><a href="?url=/signup.html">Signup</a></li>
-                {% if state %}
-                    <li><a href="?url=/success.html">Success</a></li>
-                    <li><a href="?url=/logout">Logout</a></li>
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('signup') }}">Signup</a></li>
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('success_page') }}">Success</a></li>
+                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
                 {% endif %}
             </ul>
         </nav>
@@ -35,6 +34,6 @@
     {% block content %}{% endblock %}
     <script src="static/js/serviceWorker.js"></script>
     <script src="static/js/app.js"></script>
-    <script src="https://getfreebootstrap.ru/bootstrap.js"></script>    
+    <script src="static/js/bootstrap.js"></script> 
 </body>
 </html>
