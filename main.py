@@ -3,6 +3,9 @@ import user_management as dbHandler
 import sqlite3
 from flask_login import LoginManager, UserMixin, login_user, login_required, current_user, logout_user
 from flask_csp.csp import csp_default, csp_header
+from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import re
 import html
 from datetime import datetime
@@ -15,10 +18,13 @@ import random
 
 app = Flask(__name__)
 app.secret_key="a5f8dba8cbc8d8d1c76dc1429171fc4d362242b1ec046760"
+csrf = CSRFProtect(app)
+csrf.init_app(app)
 
 app.config["SESSION_COOKIE_SECURE"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
 
 # CSP configuration
 csp_default().update({
@@ -40,23 +46,14 @@ csp_default().update({
     "frame-src": "'none'",
 })
 
-# Logger configuration
-logging.basicConfig(
-    level=logging.WARNING,
-    format="%(asctime)s %(levelname)s %(message)s",
-    handlers=[
-        logging.FileHandler("logs/security_log.log"),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger("security")  # Dedicated logger
 
 #report any CSP violations to the system log.
 @app.route("/csp_report", methods=["POST"])
-#@csrf.exempt
+@csrf.exempt
 def csp_report():
     app.logger.critical(request.data.decode())
     return "done"
+
 
 # Login functionality
 login_manager = LoginManager()
@@ -68,6 +65,19 @@ class User(UserMixin):
         self.id = id
         self.username = username
 
+
+# Logger configuration
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[
+        logging.FileHandler("logs/security_log.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("security")  # Dedicated logger
+
+
 @login_manager.user_loader
 def load_user(user_id):
     user_data = dbHandler.retrieveUsers(user_id)
@@ -76,7 +86,16 @@ def load_user(user_id):
     return None
 
 
+# Rate limiter for IP addresses
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
+
 visitor_lock = threading.Lock()
+
 
 # Function to sanitise text using a library
 def safe(string: str) -> str:
@@ -91,9 +110,11 @@ PASSWORD_PATTERN = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_=+-])[A-Za-z\
 @app.route("/", methods=["POST", "GET"])
 @csp_header()
 def home():
+    token = generate_csrf()
     # Pass message to front end
     if request.method == "GET":
         msg = request.args.get("msg", "")
+        msg = safe(msg)
         return render_template("/index.html", msg=msg)
     elif request.method == "POST":
         username = request.form.get("username")
@@ -101,7 +122,7 @@ def home():
 
         if not username or not password:
             logger.warning("Login attempt with missing fields")
-            return render_template("/index.html", error="Missing credentials"), 400
+            return render_template("/index.html", msg="Missing credentials"), 400
 
         user_data = dbHandler.retrieveUsers(username)
 
@@ -125,7 +146,7 @@ def home():
             dbHandler.listFeedback()
             return redirect(url_for("success_page"))
         else:
-            return render_template("/index.html", error="Invalid login"), 401
+            return render_template("/index.html", msg="Invalid login"), 401
     else:
         return render_template("/index.html")
 
@@ -178,18 +199,20 @@ def signup():
 @login_required
 @csp_header()
 def success_page():
+    token = generate_csrf()
     feedback_list = dbHandler.listFeedback()
     return render_template(
         "success.html",
         state=True,
         value=current_user.username,
-        feedback_list=feedback_list
+        feedback_list=feedback_list,
     )
 
 @app.route("/add_feedback", methods=["POST"])
 @login_required
 @csp_header()
 def add_feedback():
+    token = generate_csrf()
     if request.method == "POST":
         feedback = request.form.get("feedback", "").strip()
         # Validate feedback
