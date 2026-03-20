@@ -90,7 +90,7 @@ def load_user(user_id):
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=["1 per 5 seconds", "200 per day", "50 per hour"],
     storage_uri="memory://",
 )
 
@@ -233,4 +233,7 @@ def logout():
 if __name__ == "__main__":
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-    app.run(debug=True, use_reloader=True, host="0.0.0.0", port=5000)
+    app.run(debug=True,
+            use_reloader=True,
+            host="0.0.0.0",
+            port=5000,)  # auto-generate a temporary self-signed cert
