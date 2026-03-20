@@ -1,0 +1,12 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h1>Enable 2FA: Welcome, <strong>{{ value }}</strong>!</h1>
+<h2>Scan this QR Code with Google Authenticator</h2>
+<img src="data:image/png;base64,{{ qr_code }}" alt="QR Code">
+<h2>Enter the OTP from your app:</h2>
+<form action="{{ url_for('enable_2fa') }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" id="otp" name="otp" maxlength="6" class="otp" required><br><br>
+    <input type="submit" class="btn" value="Enable 2FA">
+</form>
+{% endblock %}

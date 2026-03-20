@@ -25,15 +25,15 @@ def retrieveUsers(username):
     return None
 
 
-def retrieveUserbyId(user_id):
+def retrieveUserById(user_id):
     con = sql.connect("database_files/database.db")
     con.row_factory = sql.Row
     cur = con.cursor()
     # treat numeric identifier as id, otherwise username
     try:
-        cur.execute("SELECT id, username, password FROM users WHERE id = ?", (int(user_id),))
+        cur.execute("SELECT * FROM users WHERE id = ?", (int(user_id),))
     except ValueError:
-        cur.execute("SELECT id, username, password FROM users WHERE username = ?", (user_id,))
+        cur.execute("SELECT * FROM users WHERE username = ?", (user_id,))
     row = cur.fetchone()
     cur.close()
     con.close()
@@ -43,10 +43,19 @@ def retrieveUserbyId(user_id):
     return row
 
 
+def saveUser(user):
+    con = sql.connect("database_files/database.db")
+    cur = con.cursor()
+    cur.execute(
+        "UPDATE users SET totp_secret = ? WHERE id = ?", (user.totp_secret, user.id))
+    con.commit()
+    con.close()
+
+
 def insertFeedback(feedback):
     con = sql.connect("database_files/database.db")
     cur = con.cursor()
-    cur.execute(f"INSERT INTO feedback (feedback) VALUES ('{feedback}')")
+    cur.execute("INSERT INTO feedback (feedback) VALUES (?)", (feedback,))    
     con.commit()
     con.close()
 

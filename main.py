@@ -6,6 +6,11 @@ from flask_csp.csp import csp_default, csp_header
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import pyotp
+import pyqrcode
+import os
+import base64
+from io import BytesIO
 import re
 import html
 from datetime import datetime, timedelta, date
@@ -61,10 +66,10 @@ login_manager.init_app(app)
 login_manager.login_view = "home"
 
 class User(UserMixin):
-    def __init__(self, id, username):
+    def __init__(self, id, username, totp_secret=None):
         self.id = id
         self.username = username
-
+        self.totp_secret = totp_secret
 
 # Logger configuration
 logging.basicConfig(
@@ -80,9 +85,9 @@ logger = logging.getLogger("security")  # Dedicated logger
 
 @login_manager.user_loader
 def load_user(user_id):
-    user_data = dbHandler.retrieveUserbyId(user_id)
+    user_data = dbHandler.retrieveUserById(user_id)
     if user_data:
-        return User(user_data["id"], user_data["username"])
+        return User(user_data["id"], user_data["username"], user_data["totp_secret"])
     return None
 
 
@@ -133,20 +138,13 @@ def home():
         # Simulate response time of heavy app for testing purposes
         time.sleep(random.randint(80, 90) / 1000)
 
+        # Verifies password
         if bcrypt.checkpw(password.encode(), user_data["password"]):
-            # Logs in user
             user = User(user_data["id"], user_data["username"])
-            login_user(user)
-            logger.info(f"User login successful: {username}")
-            
-            # Plain text log of visitor count as requested by Unsecure PWA management
-            with visitor_lock:
-                with open("logs/visitor_log.txt", "r") as file:
-                    number = int(file.read().strip())
-                number += 1
-                with open("logs/visitor_log.txt", "w") as file:
-                    file.write(str(number))
-            return redirect(url_for("success_page"))
+            # Store user ID until 2FA is complete
+            session["pending_user_id"] = user.id
+            logger.info(f"User entered correct password: {username}")            
+            return redirect(url_for('enable_2fa')) #redirect to 2FA page
         else:
             return render_template("/index.html", msg="Invalid login"), 401
     else:
@@ -205,6 +203,50 @@ def signup():
             return render_template("/signup.html", error="Internal server error"), 500
     else:
         return render_template("/signup.html")
+
+
+@app.route("/enable_2fa.html", methods=["POST", "GET"])
+def enable_2fa():
+    # User must have passed password check first
+    if "pending_user_id" not in session:
+        return redirect(url_for("login"))
+    
+    user = load_user(session["pending_user_id"])
+
+    # Generate secret if user doesn't have one yet
+    if not user.totp_secret:
+        user.totp_secret = pyotp.random_base32()
+        dbHandler.saveUser(user)
+
+    totp = pyotp.TOTP(user.totp_secret)
+
+    # verify OTP
+    if request.method == "POST":
+        otp_input = request.form.get("otp")
+        if totp.verify(otp_input):
+            # Logs in user
+            login_user(user)
+            logger.info(f"User login successful: {user.username}")
+            # Plain text log of visitor count as requested by Unsecure PWA management
+            with visitor_lock:
+                with open("logs/visitor_log.txt", "r") as file:
+                    number = int(file.read().strip())
+                number += 1
+                with open("logs/visitor_log.txt", "w") as file:
+                    file.write(str(number))
+            session.pop("pending_user_id")
+            return redirect(url_for("success_page"))
+        return render_template("/index.html", msg="Invalid OTP. Please try again."), 401
+    
+    # Sets QR code
+    otp_uri = totp.provisioning_uri(name=user.username, issuer_name="UnsecurePWA")
+    qr = pyqrcode.create(otp_uri)
+    stream = BytesIO()
+    qr.png(stream, scale=5)
+    qr_b64 = base64.b64encode(stream.getvalue()).decode()
+    print(qr_b64[:50])
+    
+    return render_template("enable_2fa.html", qr_code=qr_b64, value=user.username)
 
 
 @app.route("/success.html", methods=["GET"])

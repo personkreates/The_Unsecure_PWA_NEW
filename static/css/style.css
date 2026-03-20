@@ -82,6 +82,9 @@ form {
     background-color: palegreen;
 }
 .input__field:invalid {
+  background-color: lightgrey;
+}
+.input__field:focus:invalid {
     background-color: lightpink;
 }
 label,
@@ -93,6 +96,18 @@ label,
     font-size: 1.5rem;
     left: 0.5rem;
     transition: 0.3s;
+}
+.otp {
+    font-family: monospace;
+    font-size: 2rem;
+    text-align: center;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    border: 1px solid #000;
+    padding-right: 2rem;
+    background: transparent;
+    transition: all 0.2s;
+    width:50%;
 }
 .container {
     display: grid;
