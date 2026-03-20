@@ -2,7 +2,7 @@
 
 -- Use the ▷ button in the top right corner to run the entire file.
 
---CREATE TABLE users(id INTEGER PRIMARY KEY autoincrement,username TEXT NOT NULL, password BLOB NOT NULL,dateOfBirth DATE);
+--CREATE TABLE users(id INTEGER PRIMARY KEY autoincrement,username TEXT NOT NULL, password BLOB NOT NULL, dateOfBirth DATE, totp_secret TEXT);
 
 --INSERT INTO users(username,password,dateOfBirth) VALUES ("admin","password","1990-01-01");
 
