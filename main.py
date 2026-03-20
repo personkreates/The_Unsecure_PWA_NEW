@@ -8,7 +8,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import re
 import html
-from datetime import datetime
+from datetime import datetime, timedelta, date
 import bcrypt
 import logging
 import threading
@@ -24,7 +24,7 @@ csrf.init_app(app)
 app.config["SESSION_COOKIE_SECURE"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 # CSP configuration
 csp_default().update({
@@ -90,7 +90,7 @@ def load_user(user_id):
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["1 per 5 seconds", "200 per day", "50 per hour"],
+    default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://",
 )
 
@@ -104,6 +104,11 @@ def safe(string: str) -> str:
 
 USERNAME_PATTERN = r"^\w{3,16}$"
 PASSWORD_PATTERN = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_=+-])[A-Za-z\d!@#$%^&*_=+-]{8,16}$"
+
+
+def calculate_age(dob):
+    today = date.today()
+    return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
 
 @app.route("/index.html", methods=["POST", "GET"])
@@ -173,6 +178,16 @@ def signup():
             logger.warning(f"Invalid DOB format for username: {username}")
             return render_template("/signup.html", error="Invalid date format (YYYY-MM-DD)"), 400
         
+        # Age verification
+        if dob > date.today():
+            logger.warning(f"Invalid DOB in the future: {username}")
+            return render_template("/signup.html", error="Invalid date in the future"), 400
+        
+        age = calculate_age(dob)
+        if age < 16:
+            logger.warning(f"Underage signup attempt: {username}")
+            return render_template("/signup.html", error="You must be at least 16 years of age to sign up"), 400
+
         try:
             hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
             dob_str = dob.strftime("%Y-%m-%d")

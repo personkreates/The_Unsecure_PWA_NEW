@@ -1,7 +1,14 @@
 {% extends 'layout.html' %}
 {% block content %}
+<p><i>This PWA collects date of birth (D.O.B.) data solely for age verification purposes.</i></p>
+<br>
 <h1>Signup Form</h1>
-<p><i>This PWA collects date of birth for age verification purposes.</i></p>
+<br>
+<!-- Error message -->
+{% if error %}
+<div>{{ error }}</div>
+{% endif %}
+
 <form action="{{ url_for('signup') }}" method="POST" class="box">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="input__wrapper">
